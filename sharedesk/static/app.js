@@ -205,7 +205,7 @@ const SMB_FIELDS = [
   ["invalid users", "Invalid users", "text"], ["admin users", "Admin users", "text", "Act as root on this share"],
   ["force user", "Force user", "text"], ["force group", "Force group", "text"],
   ["create mask", "Create mask", "text"], ["directory mask", "Directory mask", "text"],
-  ["hosts allow", "Hosts allow", "text", "e.g. 10.0.20.0/24"], ["hosts deny", "Hosts deny", "text"],
+  ["hosts allow", "Hosts allow", "text", "e.g. 192.168.1.0/24"], ["hosts deny", "Hosts deny", "text"],
 ];
 const SMB_KEYS = new Set(SMB_FIELDS.map((f) => f[0]));
 
@@ -371,7 +371,7 @@ async function nfsView(view) {
 }
 
 function exportForm(exp) {
-  const clients = exp ? exp.clients : [{ host: "10.0.20.0/24", options: "rw,sync,no_subtree_check,root_squash" }];
+  const clients = exp ? exp.clients : [{ host: "192.168.1.0/24", options: "rw,sync,no_subtree_check,root_squash" }];
   const clientRow = (c) => {
     const o = nfsParse(c.options);
     const sel = (cls, opts, val) => `<select class="${cls}">${opts.map((x) => `<option ${x === val ? "selected" : ""}>${x}</option>`).join("")}</select>`;

@@ -18,18 +18,18 @@ NET_CONF = """[global]
 \tforce group = sambashare
 """
 
-EXPORTS = """#/mnt/shares/Files 10.0.20.0/24(rw)
-/mnt/shares/Proxmox-nfs    10.0.20.0/24(rw,sync,no_subtree_check,no_root_squash) 10.10.40.0/24(rw,sync)
+EXPORTS = """#/mnt/shares/Files 192.168.1.0/24(rw)
+/mnt/shares/Proxmox-nfs    192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash) 192.168.40.0/24(rw,sync)
 
-/mnt/shares/media          10.0.20.0/24(rw,sync,all_squash,anonuid=1000,anongid=1000)
+/mnt/shares/media          192.168.1.0/24(rw,sync,all_squash,anonuid=1000,anongid=1000)
 """
 
-LAB = "/mnt/shares/lab          10.0.20.69(rw,sync,no_subtree_check,root_squash)\n"
+LAB = "/mnt/shares/lab          192.168.1.69(rw,sync,no_subtree_check,root_squash)\n"
 
 PDBEDIT = """---------------
-Unix username:        blake
+Unix username:        bob
 Account Flags:        [U          ]
-Full Name:            blake
+Full Name:            bob
 Password last set:    Mon, 10 Aug 2026 16:18:10 MDT
 ---------------
 Unix username:        alice
@@ -37,10 +37,10 @@ Account Flags:        [DU         ]
 Full Name:            Alice
 """
 
-GROUP = "root:x:0:\nblake:x:1000:\nsambashare:x:1001:blake\nlabapps:x:101000:\n"
-PASSWD = "root:x:0:0::/root:/bin/bash\nblake:x:1000:1000::/home/blake:/bin/bash\nalice:x:1002:1002::/:/sbin/nologin\n"
+GROUP = "root:x:0:\nbob:x:1000:\nsambashare:x:1001:bob\nlabapps:x:101000:\n"
+PASSWD = "root:x:0:0::/root:/bin/bash\nbob:x:1000:1000::/home/bob:/bin/bash\nalice:x:1002:1002::/:/sbin/nologin\n"
 FIND = ("/mnt/shares\troot\tsambashare\t2775\tdrwxrwsr-x\t?\n"
-        "/mnt/shares/Files\tblake\tblake\t777\tdrwxrwxrwx\tsystem_u:object_r:unlabeled_t:s0\n")
+        "/mnt/shares/Files\tbob\tbob\t777\tdrwxrwxrwx\tsystem_u:object_r:unlabeled_t:s0\n")
 
 
 class FakeHost:
@@ -87,7 +87,7 @@ class FakeHost:
 @pytest.fixture
 def env(tmp_path):
     s = Settings({"SHAREDESK_ADMIN_PASSWORD": "hunter22", "SHAREDESK_SSH_HOST": "storage",
-                  "SHAREDESK_DATA_DIR": str(tmp_path), "SHAREDESK_PROTECTED_USERS": "blake"})
+                  "SHAREDESK_DATA_DIR": str(tmp_path), "SHAREDESK_PROTECTED_USERS": "bob"})
     host = FakeHost()
     client = TestClient(create_app(s, host))
     client.headers["X-ShareDesk"] = "1"
@@ -175,13 +175,13 @@ def test_users_listing_and_protection(env):
     client, host = env
     login(client)
     d = client.get("/api/users").json()
-    blake = next(u for u in d["users"] if u["name"] == "blake")
+    bob = next(u for u in d["users"] if u["name"] == "bob")
     alice = next(u for u in d["users"] if u["name"] == "alice")
-    assert blake["groups"] == ["blake", "sambashare"] and blake["protected"]
+    assert bob["groups"] == ["bob", "sambashare"] and bob["protected"]
     assert alice["disabled"] and not alice["protected"]
-    assert [g["name"] for g in d["groups"]] == ["blake", "sambashare"]  # skips root and subuid ranges
-    assert client.post("/api/users/delete", json={"name": "blake"}).status_code == 400
-    assert client.post("/api/users/enabled", json={"name": "blake", "enabled": False}).status_code == 400
+    assert [g["name"] for g in d["groups"]] == ["bob", "sambashare"]  # skips root and subuid ranges
+    assert client.post("/api/users/delete", json={"name": "bob"}).status_code == 400
+    assert client.post("/api/users/enabled", json={"name": "bob", "enabled": False}).status_code == 400
 
 
 def test_password_never_in_preview_or_audit(env, tmp_path):
@@ -203,18 +203,18 @@ def test_add_user_creates_unix_account():
 
 def test_set_groups_diff():
     groups = samba.parse_group(GROUP)
-    plan = samba.set_groups("blake", [], groups, primary="blake")
-    assert [shlex.join(s.argv) for s in plan.steps] == ["gpasswd -d blake sambashare"]
+    plan = samba.set_groups("bob", [], groups, primary="bob")
+    assert [shlex.join(s.argv) for s in plan.steps] == ["gpasswd -d bob sambashare"]
     plan = samba.set_groups("alice", ["sambashare"], groups, primary="alice")
     assert [shlex.join(s.argv) for s in plan.steps] == ["gpasswd -a alice sambashare"]
     with pytest.raises(v.Invalid):
-        samba.set_groups("blake", ["labapps"], groups)
+        samba.set_groups("bob", ["labapps"], groups)
 
 
 def test_nfs_parse():
     entries = nfs.parse("/etc/exports", EXPORTS)
     assert [e["path"] for e in entries] == ["/mnt/shares/Proxmox-nfs", "/mnt/shares/media"]
-    assert entries[0]["clients"][0] == {"host": "10.0.20.0/24", "options": "rw,sync,no_subtree_check,no_root_squash"}
+    assert entries[0]["clients"][0] == {"host": "192.168.1.0/24", "options": "rw,sync,no_subtree_check,no_root_squash"}
     assert entries[1]["line"] == 3
     cont = nfs.parse("f", "/a \\\n  host1(ro) \\\n  host2\n/b h(rw)\n")
     assert cont[0]["clients"] == [{"host": "host1", "options": "ro"}, {"host": "host2", "options": ""}]
@@ -226,12 +226,12 @@ def test_nfs_update_keeps_other_lines(env):
     login(client)
     e = client.get("/api/nfs").json()["exports"][0]
     r = client.post("/api/nfs/update", json={"file": e["file"], "id": e["id"], "path": e["path"],
-                                              "clients": [{"host": "10.0.20.0/24", "options": "rw,sync,root_squash"}]})
+                                              "clients": [{"host": "192.168.1.0/24", "options": "rw,sync,root_squash"}]})
     assert r.status_code == 200
     written = next(i for a, i in host.calls if a == ["tee", "/etc/exports"])
-    assert written.splitlines()[0] == "#/mnt/shares/Files 10.0.20.0/24(rw)"
-    assert "10.0.20.0/24(rw,sync,root_squash)" in written.splitlines()[1]
-    assert "10.10.40.0" not in written and "/mnt/shares/media" in written
+    assert written.splitlines()[0] == "#/mnt/shares/Files 192.168.1.0/24(rw)"
+    assert "192.168.1.0/24(rw,sync,root_squash)" in written.splitlines()[1]
+    assert "192.168.40.0" not in written and "/mnt/shares/media" in written
     assert host.writes() == ["cp -a -- /etc/exports /etc/exports.sharedesk-bak", "tee /etc/exports", "exportfs -ra"]
 
 
@@ -258,10 +258,10 @@ def test_nfs_create_goes_to_managed_file(env):
     client, host = env
     login(client)
     r = client.post("/api/nfs/create", json={"path": "/mnt/shares/media", "preview": True,
-                                              "clients": [{"host": "10.0.20.50", "options": "ro"}]})
+                                              "clients": [{"host": "192.168.1.50", "options": "ro"}]})
     assert r.status_code == 400 and "already exported" in r.json()["error"]
     r = client.post("/api/nfs/create", json={"path": "/mnt/shares/new", "preview": True,
-                                              "clients": [{"host": "10.0.20.50", "options": "ro,sync"}]}).json()
+                                              "clients": [{"host": "192.168.1.50", "options": "ro,sync"}]}).json()
     assert r["preview"]["steps"][0]["cmd"] == "tee /etc/exports.d/sharedesk.exports"
     assert "+/mnt/shares/new" in r["preview"]["diff"]
 
@@ -274,17 +274,17 @@ def test_nfs_rejects_bad_client():
 
 
 def test_folder_change_recursive():
-    current = {"owner": "blake", "group": "blake", "mode": "0777"}
-    plan = folders.change("/mnt/shares/Files", current, "blake", "sambashare", "2775", True, "664")
+    current = {"owner": "bob", "group": "bob", "mode": "0777"}
+    plan = folders.change("/mnt/shares/Files", current, "bob", "sambashare", "2775", True, "664")
     assert [shlex.join(s.argv) for s in plan.steps] == [
-        "chown -R blake:sambashare -- /mnt/shares/Files",
+        "chown -R bob:sambashare -- /mnt/shares/Files",
         "find /mnt/shares/Files -type d -exec chmod 02775 '{}' +",
         "find /mnt/shares/Files -type f -exec chmod 00664 '{}' +",
     ]
-    plan = folders.change("/mnt/shares/Files", current, "blake", "blake", "775", False, None)
+    plan = folders.change("/mnt/shares/Files", current, "bob", "bob", "775", False, None)
     assert [shlex.join(s.argv) for s in plan.steps] == ["chmod 00775 -- /mnt/shares/Files"]
     with pytest.raises(v.Invalid):
-        folders.change("/mnt/shares/Files", current, "blake", "blake", "0777", False, None)
+        folders.change("/mnt/shares/Files", current, "bob", "bob", "0777", False, None)
 
 
 def test_folder_endpoint_guards(env):

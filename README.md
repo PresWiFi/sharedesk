@@ -41,7 +41,7 @@ ssh you@server 'sudo bash setup-host.sh "'"$(cat config/id_ed25519.pub)"'" /mnt/
 Then record the server's host key so ShareDesk can verify it:
 
 ```sh
-ssh-keyscan -t ed25519 server-ip > config/known_hosts
+ssh-keyscan -t ed25519 192.168.1.10 > config/known_hosts
 ```
 
 ### 3. Run it
