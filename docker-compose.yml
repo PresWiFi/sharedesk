@@ -1,0 +1,16 @@
+services:
+  sharedesk:
+    image: ghcr.io/preswifi/sharedesk:latest
+    build: .
+    container_name: sharedesk
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${SHAREDESK_PORT:-8080}:8080"
+    volumes:
+      # id_ed25519 (private key for the sharedesk user) and known_hosts. See README.
+      - ./config:/config:ro,z
+      - sharedesk-data:/data
+
+volumes:
+  sharedesk-data:

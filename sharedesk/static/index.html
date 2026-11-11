@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ShareDesk</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%233b82f6' d='M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div id="login" class="login hidden">
+  <form id="login-form" class="card">
+    <h1>ShareDesk</h1>
+    <p class="muted" id="login-host"></p>
+    <input type="password" id="login-password" placeholder="Admin password" autocomplete="current-password" required autofocus>
+    <button class="primary" type="submit">Log in</button>
+    <p class="error" id="login-error"></p>
+  </form>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <div class="brand">ShareDesk <span class="muted" id="hostname"></span></div>
+    <nav id="tabs">
+      <button data-tab="overview">Overview</button>
+      <button data-tab="smb">SMB shares</button>
+      <button data-tab="users">Users &amp; groups</button>
+      <button data-tab="nfs">NFS exports</button>
+      <button data-tab="folders">Folders</button>
+      <button data-tab="activity">Activity</button>
+    </nav>
+    <button class="ghost" id="logout">Log out</button>
+  </header>
+  <main id="view"><p class="muted">Loading…</p></main>
+</div>
+
+<dialog id="modal"><div id="modal-body"></div></dialog>
+<div id="toast" class="toast hidden"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
