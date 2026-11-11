@@ -65,6 +65,31 @@ sudo podman run -d --name sharedesk --network host --env-file .env \
   ghcr.io/preswifi/sharedesk:latest
 ```
 
+To have systemd run it and start it at boot, save this as `/etc/containers/systemd/sharedesk.container`, then `sudo systemctl daemon-reload && sudo systemctl start sharedesk`. Keep the key and `known_hosts` in a folder owned by uid 1000 (the container's user), and the `.env` root-only:
+
+```ini
+[Unit]
+Description=ShareDesk
+After=network-online.target sshd.service
+Wants=network-online.target
+
+[Container]
+Image=ghcr.io/preswifi/sharedesk:latest
+ContainerName=sharedesk
+Network=host
+EnvironmentFile=/etc/sharedesk/sharedesk.env
+Volume=/etc/sharedesk/config:/config:ro,Z
+Volume=sharedesk-data:/data
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Update later with `sudo podman pull ghcr.io/preswifi/sharedesk:latest && sudo systemctl restart sharedesk`.
+
 With `--network host`, set `SHAREDESK_SSH_HOST=127.0.0.1` and make the `known_hosts` entry for `127.0.0.1`. Open the port in firewalld if needed: `sudo firewall-cmd --permanent --add-port=8080/tcp && sudo firewall-cmd --reload`.
 
 ## Settings
